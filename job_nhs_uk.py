@@ -5,7 +5,6 @@ from playwright.sync_api import sync_playwright, ElementHandle
 import os
 import pymysql
 from functions import connection_db
-import dateparser
 host,user,password,database = connection_db()
 connection = pymysql.connect(host=host, user=user, password=password, database=database)
 cur = connection.cursor()

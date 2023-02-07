@@ -5,7 +5,6 @@ from playwright.sync_api import sync_playwright, ElementHandle
 import os
 import pymysql
 from functions import connection_db
-import dateparser
 host,user,password,database = connection_db()
 connection = pymysql.connect(host=host, user=user, password=password, database=database)
 cur = connection.cursor()
@@ -34,6 +33,18 @@ def job_type_id(job_type):
         id = cur.lastrowid
     return id
 
+def agency_id(agency):
+    cur = connection.cursor()
+    cur.execute(f"SELECT id FROM agency where name = '{agency}'")
+    re = cur.fetchall()
+    if(len(re) > 0):
+        id = re[0][0]
+    else:
+        cur.execute("INSERT INTO `agency`(`name`) VALUES (%s)",(agency))
+        connection.commit()
+        id = cur.lastrowid
+    return id
+
 Location = "London"
 category_send = "Doctor"
 os.environ["BROWSER_PATH"] = "~/.cache/ms-playwright"
@@ -42,7 +53,7 @@ with sync_playwright() as p:
         )
     page = browser.new_page()
     page.goto('https://www.seek.com.au/', timeout=50000)
-    page.locator('input#keywords-input').type()
+    page.locator('input#keywords-input').type(category_send)
     page.locator('input#SearchBar__Where').type(Location)
     time.sleep(3)
     page.locator('div.yvsb870._14wvm1j2 button').click()
@@ -68,6 +79,11 @@ with sync_playwright() as p:
             except:
                 appply_link = ""
             try:
+                agency_name = page.locator('span[data-automation=advertiser-name]').inner_text().strip()
+                agency = agency_id(agency_name)
+            except:
+                agency = ""
+            try:
                 company_name = page.locator('span[data-automation=advertiser-name]').inner_text().strip()
             except:
                 company_name = ""
@@ -83,7 +99,6 @@ with sync_playwright() as p:
                 category = page.locator('a[data-automation=jobClassification]').inner_text().strip()
             except:
                 category = ""
-            print(apply_link)
             if apply_link != "":
                 try:
                     data = cur.execute(f"SELECT * FROM jobs WHERE apply_link = '{apply_link}'")
@@ -92,7 +107,7 @@ with sync_playwright() as p:
                             category_id = get_category_id(category)
                         else:
                             category_id = get_category_id(category_send)
-                        cur.execute(f'INSERT INTO `jobs`(`website_id`, `category_id`, `title`, `description`, `apply_link`,`location`) VALUES ("3","{category_id}","{job_title}","{description}","{apply_link}","{Location}")')
+                        cur.execute(f'INSERT INTO `jobs`(`website_id`, `category_id`, `title`, `description`, `apply_link`,`location`,`agency_id`) VALUES ("3","{category_id}","{job_title}","{description}","{apply_link}","{Location}","{agency}")')
                         job_id = connection.insert_id()
                         connection.commit()
                         if job_type != "":

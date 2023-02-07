@@ -1,6 +1,4 @@
-import csv
 import json
-from dateutil import parser
 import requests
 from datetime import date as today_date
 from playwright.sync_api import sync_playwright, ElementHandle
@@ -32,6 +30,18 @@ def job_type_id(job_type):
         id = re[0][0]
     else:
         cur.execute("INSERT INTO `types`(`job_type`) VALUES (%s)",(job_type))
+        connection.commit()
+        id = cur.lastrowid
+    return id
+
+def agency_id(agency):
+    cur = connection.cursor()
+    cur.execute(f"SELECT id FROM agency where name = '{agency}'")
+    re = cur.fetchall()
+    if(len(re) > 0):
+        id = re[0][0]
+    else:
+        cur.execute("INSERT INTO `agency`(`name`) VALUES (%s)",(agency))
         connection.commit()
         id = cur.lastrowid
     return id
@@ -83,6 +93,12 @@ with sync_playwright() as p:
                     except:
                         job_title = ""
                     try:
+                        agency_name = page.locator("div[data-company-name=true] a").inner_text().strip()
+                        # print(agency_name)
+                        agency = agency_id(agency_name)
+                    except:
+                        agency = ""
+                    try:
                         company_name = page.locator("div.css-czdse3.eu4oa1w0 a").inner_text().strip()
                     except:
                         company_name = ""
@@ -112,7 +128,7 @@ with sync_playwright() as p:
                             data = cur.execute(f"SELECT * FROM jobs WHERE apply_link = '{apply_link}'")
                             if not data > 0:
                                 category_id = get_category_id(cat_jobs)
-                                cur.execute(f'INSERT INTO `jobs`(`website_id`, `category_id`, `title`, `salary`, `description`, `apply_link`,`location`) VALUES ("2","{category_id}","{job_title}","{salary}","{descripition}","{apply_link}","{Location}")')
+                                cur.execute(f'INSERT INTO `jobs`(`website_id`, `category_id`, `title`, `salary`, `description`, `apply_link`,`location`,`agency_id`) VALUES ("2","{category_id}","{job_title}","{salary}","{descripition}","{apply_link}","{Location}","{agency}")')
                                 job_id = connection.insert_id()
                                 connection.commit()
                                 if job_types != "":
